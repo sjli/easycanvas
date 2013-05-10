@@ -1,0 +1,61 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+	<head>
+		<meta charset="utf-8">
+		<title></title>
+		<link href="../src/default.css" rel="stylesheet" />
+	</head>
+	<body>
+	
+		<div id="viewport"></div>
+	
+		<script type="text/javascript" src="../src/underscore-min.js"></script>
+		<script type="text/javascript" src="../src/backbone.js"></script>
+		<script type="text/javascript" src="../src/ec.global.js"></script>
+
+		<script type="text/javascript">
+			//create 2 layers, background draw a circle, foreground draw a rect
+
+			var layer1 = new EC.Layer();
+			var layer2 = new EC.Layer();
+			var ctx1 = layer1.ctx;
+			var ctx2 = layer2.ctx;
+
+			var graph1 = new EC.Graph({
+				'x': 50,
+				'y': 50,
+				'r': 10,
+				'path': function(ctx) {
+					ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2, false);
+				},
+				'draggable': true
+			});
+			graph1.render(ctx1, ['fill']);
+
+			var Graph2 = EC.Graph.extend({
+				path: function(ctx) {
+					ctx.rect(this.x, this.y, this.r, this.r);
+				},
+				'draggable': true,
+				'dragMode': 'normal'
+			});
+
+			g21 = new Graph2({x:100, y:100, r:20}).render(ctx1, ['stroke']);
+
+			g22 = new Graph2({x:120, y:120, r:20}).render(ctx1, ['stroke']);
+
+			g23 = new Graph2({x:140, y:140, r:20}).render(ctx2, ['stroke']);
+
+
+
+
+
+			graph1.on('dragging', function(dx, dy) {
+				this.x += dx;
+				this.y += dy;
+				this.reRender();
+			});
+
+		</script>
+	</body>
+</html>
