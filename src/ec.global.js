@@ -199,6 +199,80 @@
 
     // 创建用于保存图形数据的存储器
     ctx.graphs = [];
+
+    ctx.reRender = function() {
+      var graphs = this.graphs,
+          len = graphs.length,
+          i = 0;
+
+      this.clearRect(0, 0, Layer.viewport.width, Layer.viewport.height);
+
+      for (; i < len; i++) {
+        graphs[i].render();
+      }
+    };
+  }
+
+
+
+  //animation
+  function _animation() {
+    var request = (function(callback) {
+          return window.requestAnimationFrame ||
+          window.webkitRequestAnimationFrame ||
+          window.mozRequestAnimationFrame ||
+          window.oRequestAnimationFrame ||
+          window.msRequestAnimationFrame ||
+          function(callback){
+            window.setTimeout(callback, 1000 / 60);
+          };
+        })();
+        
+    Layer.aniLayers = [];
+
+    function clearStage() {
+      if (Layer.aniLayers.length === 0) {return;}
+      Layer.aniLayers.forEach(function(v) {
+        v._aniClear();
+      });
+    }
+    function updateStage() {
+      if (Layer.aniLayers.length === 0) {return;}
+      Layer.aniLayers.forEach(function(v) {
+        v._aniUpdate();
+      });
+    }
+    function renderStage() {
+      if (Layer.aniLayers.length === 0) {return;}
+      Layer.aniLayers.forEach(function(v) {
+        v._aniRender();
+      });
+    }
+
+
+    Layer.animate = {
+      start: function() {
+
+        clearStage();
+        updateStage();
+        renderStage();
+
+        request(function() {
+          Layer.animate.start();
+        });
+
+      },
+
+      stop: function() {
+        Layer.tempRequest = request;
+        request = function() {};
+      },
+
+      restart: function() {
+        request = Layer.tempRequest || request;
+        this.start();
+      }
+    };
   }
 
 
@@ -209,8 +283,11 @@
     width: 200,
     height: 200,
     domId: 'viewport',
-    initialize: function() {
-      this.elm = document.getElementById(this.domId);
+    initialize: function(domId) {
+      this.elm = document.getElementById(domId || this.domId);
+      if (!this.elm) {return;}
+      this.width = this.elm.offsetWidth || this.width;
+      this.height = this.elm.offsetHeight || this.height;
       this.initPos();
       this.posEvents();
     },
@@ -286,6 +363,7 @@
       }
 
       this.create();
+      _animation();
     },
 
     create: function() {
@@ -296,6 +374,21 @@
       this.canvas.id = 'ec_' + this.cid;
       this.ctx = this.canvas.getContext('2d');
       _enhanceCTX(this.ctx);
+    },
+
+    _aniClear: function() {
+      this.ctx.clearRect(0, 0, Layer.viewport.width, Layer.viewport.height);
+    },
+
+    _aniRender: function() {
+      this.ctx.reRender();
+    },
+
+    _aniUpdate: function() {},
+
+    update: function(fn) {
+      Layer.aniLayers.push(this);
+      this._aniUpdate = fn;
     }
 
   });
@@ -334,26 +427,22 @@
       }
       
       this._createPath(this.ctx);
-      this._renderType(this.ctx, this.renderType);
-
-      return this;
-    },
-
-    reRender: function() {
-      var graphs = this.ctx.graphs,
-          len = graphs.length,
-          i = 0;
-
-      this.ctx.clearRect(0, 0, Layer.viewport.width, Layer.viewport.height);
-
-      for (; i < len; i++) {
-        graphs[i].render();
+      if (this.style) {
+        this.ctx.save();
+        this._setStyle();
       }
-    },
+      this._renderType(this.ctx, this.renderType);
+      if (this.style) {
+        this.ctx.restore();
+      }
+      return this;
+    }, 
 
     _createPath: function(ctx) {
+      if (!this.path) {
+        this.path = function() {};
+      }
       ctx.beginPath();
-
       this.path(ctx);
     },
 
@@ -365,6 +454,16 @@
         type.forEach(function(v) {
           args.callee.call(This, ctx, v);
         })
+      } else if (IsType.isFunction(type)) {
+        type.call(this);
+      }
+    },
+
+    _setStyle: function() {
+      if (!this.style) {return;}
+      for (var i in this.style) {
+        if (typeof this.ctx[i] == 'string')
+          this.ctx[i] = this.style[i];
       }
     },
 
@@ -406,10 +505,11 @@
     //mouseover等需要通过viewport的mousemove判断的事件
     _specBind: function(viewport, ctx, This) {
       DOMEvent.add(viewport.elm, 'mousemove', function(e) {
-        
+        This._handleDrag(viewport);
+
         This._createPath(ctx);
         if (ctx.isPointInPath(viewport.x, viewport.y)) {
-          This._handleDrag(viewport);
+          
           if (This.msover) {
             This.trigger('mousemove');
           } else {
@@ -448,7 +548,7 @@
       this.on('dragging', function(dx, dy) {
         this.x += dx;
         this.y += dy;
-        this.reRender();
+        this.ctx.reRender();
       });
     }
 

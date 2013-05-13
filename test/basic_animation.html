@@ -7,7 +7,7 @@
 	</head>
 	<body>
 	
-		<div id="viewport"></div>
+		<div id="viewport" style="width:300px;height: 150px"></div>
 	
 		<script type="text/javascript" src="../src/underscore-min.js"></script>
 		<script type="text/javascript" src="../src/backbone.js"></script>
@@ -20,7 +20,7 @@
 				layer2 = new EC.Layer(),
 				ctx1 = layer1.ctx,
 				ctx2 = layer2.ctx,
-				graph1, Graph2;
+				graph1. Graph2;
 
 			graph1 = new EC.Graph({
 				'x': 50,
@@ -37,25 +37,18 @@
 				path: function(ctx) {
 					ctx.rect(this.x, this.y, this.r, this.r);
 				},
+				style: {'fillStyle': '#fff'},
 				'draggable': true,
 				'dragMode': 'normal'
 			});
 
-			g21 = new Graph2({x:100, y:100, r:20}).render(ctx1, ['stroke']);
+			g21 = new Graph2({x:100, y:40, r:20}).render(ctx1, ['stroke', 'fill']);
 
-			g22 = new Graph2({x:120, y:120, r:20}).render(ctx1, ['stroke']);
+			layer1.update(function() {
+				graph1.x = ++graph1.x % EC.Layer.viewport.width;
 
-			g23 = new Graph2({x:140, y:140, r:20}).render(ctx2, ['stroke']);
-
-
-
-
-
-			graph1.on('dragging', function(dx, dy) {
-				this.x += dx;
-				this.y += dy;
-				this.ctx.reRender();
 			});
+			EC.Layer.animate.start();
 
 		</script>
 	</body>

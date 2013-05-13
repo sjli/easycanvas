@@ -1,0 +1,95 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+	<head>
+		<meta charset="utf-8">
+		<title></title>
+		<link href="../src/default.css" rel="stylesheet" />
+	</head>
+	<body>
+	
+		<div id="viewport" style="width:300px;height: 150px"></div>
+	
+		<script type="text/javascript" src="../src/underscore-min.js"></script>
+		<script type="text/javascript" src="../src/backbone.js"></script>
+		<script type="text/javascript" src="../src/ec.global.js"></script>
+
+		<script type="text/javascript">
+			//create 2 layers, background draw a circle, foreground draw a rect
+
+			var layer1 = new EC.Layer(),
+				layer2 = new EC.Layer(),
+				ctx1 = layer1.ctx,
+				ctx2 = layer2.ctx,
+				bgImg = document.createElement('img'),
+				fishImg = document.createElement('img'),
+				direct = 1,
+				bg, fish;
+
+			
+
+
+			bg = new EC.Graph({
+				x: 0,
+				y: 0,
+				w: 300,
+				h: 150,
+				img: bgImg
+			});
+			bgImg.onload = function() {
+				bg.render(ctx1, function() {
+					this.ctx.drawImage(this.img, this.x, this.y, this.w, this.h);
+					this.ctx.drawImage(this.img, this.x - this.w + 1, this.y, this.w, this.h);
+				});
+			};
+
+			fish = new EC.Graph({
+				x: 50,
+				y: 50,
+				w: 50,
+				h: 50,
+				img: fishImg,
+				path: function(ctx) {
+					ctx.rect(this.x, this.y, this.w, this.h);
+				},
+				'draggable': true,
+				'dragMode': 'normal'
+			});
+
+			fishImg.onload = function() {
+
+				fish.render(ctx2, function() {
+					ctx2.save();
+					if (direct == -1) {
+						ctx2.flipH(fish.x + fish.w / 2);
+					}
+					this.ctx.drawImage(this.img, this.x, this.y, this.w, this.h);
+					ctx2.restore();
+				});
+			};
+
+			layer1.update(function() {
+				bg.x += direct;
+				if (bg.x > 300 || bg.x < 0) {
+					//bg.x = 0;
+					direct *= -1;
+					ctx2.reRender();
+				}
+
+			});
+
+			EC.Layer.animate.start();
+
+			EC.Layer.viewport.elm.addEventListener('mouseover', function() {
+				//EC.Layer.animate.stop();
+			}, false);
+
+			EC.Layer.viewport.elm.addEventListener('mouseout', function() {
+				//EC.Layer.animate.restart();
+			}, false);
+
+			bgImg.src = '../src/img/sea.jpg';
+			fishImg.src = '../src/img/fish1.png';
+
+		</script>
+	</body>
+</html>
