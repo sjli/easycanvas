@@ -456,6 +456,8 @@
         })
       } else if (IsType.isFunction(type)) {
         type.call(this);
+      } else if (!type && IsType.isFunction(this.renderFn)) {
+        this.renderFn();
       }
     },
 

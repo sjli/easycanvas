@@ -1,0 +1,203 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+	<head>
+		<meta charset="utf-8">
+		<title></title>
+		<link href="../src/default.css" rel="stylesheet" />
+	</head>
+	<body>
+	
+		<div id="viewport" style="width:600px;height: 250px"></div>
+		<div style="position: absolute; left: -9999px;">
+			<img src="../src/img/fish1.png" />
+			<img src="../src/img/fish2.png" />
+			<img src="../src/img/fish3.png" />
+			<img src="../src/img/fish4.png" />
+		</div>
+	
+		<script type="text/javascript" src="../src/lib/underscore-min.js"></script>
+		<script type="text/javascript" src="../src/lib/backbone.js"></script>
+		<script type="text/javascript" src="../src/ec.global.js"></script>
+
+		<script type="text/javascript">
+			//create 2 layers, background draw a circle, foreground draw a rect
+
+
+			var imgs = {
+					'bg': '../src/img/sea.jpg',
+					'owner': '../src/img/fish1.png',
+					'enermy': ['../src/img/fish2.png', '../src/img/fish3.png', '../src/img/fish4.png']
+				}
+
+			var layer1 = new EC.Layer(),
+				layer2 = new EC.Layer(),
+				layer3 = new EC.Layer(),
+				ctx1 = layer1.ctx,
+				ctx2 = layer2.ctx,
+				ctx3 = layer3.ctx,
+				bgImg = document.createElement('img'),
+				fishImg = document.createElement('img'),
+				rows = 4,
+				cols = 4,
+				bg, Fish, Shoot, owner, enermy = [], shoots = [], i, j, tempEnermy, step = 5, inited = false;
+
+			
+
+
+			bg = new EC.Graph({
+				x: 0,
+				y: 0,
+				w: 600,
+				h: 250,
+				img: bgImg
+			});
+			bgImg.onload = function() {
+				bg.render(ctx1, function() {
+					this.ctx.drawImage(this.img, this.x, this.y, this.w, this.h);
+					this.ctx.drawImage(this.img, this.x - this.w + 1, this.y, this.w, this.h);
+				});
+			};
+
+			bgImg.src = imgs.bg;
+
+			Fish = EC.Graph.extend({
+				renderFn: function() {
+					this.ctx.save();
+					if (this == owner) {
+						this.ctx.flipH(this.x + this.w / 2);
+					}
+					this.ctx.drawImage(this.img, this.x, this.y, this.w, this.h);
+					this.ctx.restore();
+				}
+			});
+
+			function createFish(x, y, w, h, src, ctx) {
+				var img = document.createElement('img');
+				img.src = src;
+				return new Fish({x: x, y: y, w: w, h: h, img: img}).render(ctx);
+			}
+
+			
+
+
+			function initEnermy() {
+				for (i = 0; i < rows; i++) {
+					for (j = 0; j < cols; j++) {
+						tempEnermy = createFish(600 + i * 50, 20 + j * 50 + i * 10, 30, 30, imgs.enermy[0], ctx2);
+						enermy.push(tempEnermy);
+					}
+				}
+			}
+
+			function initGame() {
+				inited = true;
+				ctx3.clearRect(0, 0, 600, 250);
+				owner = createFish(50, 100, 50, 50, imgs.owner, ctx2);
+				initEnermy();
+				EC.Layer.animate.restart();
+			}
+			
+
+
+			layer1.update(function() {
+				bg.x = ++bg.x > 600 ? 0 : bg.x;
+			});
+
+
+			layer2.update(function() {
+				shoots.forEach(function(v) {
+					v.x += 1;
+					enermy.forEach(function(b) {
+						if (v.x >= b.x && v.x <= b.x + b.w && v.y >= b.y && v.y <= b.y + b.h) {
+							die(b);
+						}
+					})
+				});
+
+				enermy.forEach(function(b) {
+					b.x--;  
+					if (b.x + b.w < 0) {
+						die(b);
+					}
+					if (owner.x >= b.x && owner.x <= b.x + b.w && owner.y >= b.y && owner.y <= b.y + b.h) {
+						die(owner);
+					}
+				});
+
+
+			});
+
+			function die(o) {
+				var ind1 = enermy.indexOf(o),
+					ind2 = ctx2.graphs.indexOf(o);
+				if (ind1 > -1) {
+					enermy.splice(ind1, 1);
+					ctx2.graphs.splice(ind2, 1);
+				}
+				if (o == owner) {
+					gameover();
+					return;
+				}
+				if (enermy.length == 0) {
+					initEnermy();
+				}
+				ctx2.reRender();
+			}
+
+			function gameover() {
+				EC.Layer.animate.stop();
+				enermy = [];
+				ctx2.graphs = [];
+				shoots = [];
+				ctx2.clearRect(0, 0, 600, 250);
+				inited = false;
+
+				var	txt1 = 'GAME OVER',
+					txt2 = 'Please Press \'SPACE\' to restart';
+
+				ctx3.font = '50px arial';
+				ctx3.strokeText(txt1, 150, 100);
+				ctx3.font = '30px arial';
+				ctx3.strokeText(txt2, 100, 150); 
+			}
+
+			
+
+			window.addEventListener('keydown', function(e) {
+				//'space' shoot
+				if (e.keyCode == '32') {
+					if (inited)
+						shoot();
+					else
+						initGame();
+				} else if (e.keyCode == '38') { // 'up'
+					owner.y = owner.y - step < 0 ? 0 : owner.y - step;
+				} else if (e.keyCode == '40') { // 'down'
+					owner.y = owner.y + step > 200 ? 200 : owner.y + step;
+				} else if (e.keyCode == '37') { // 'left'
+					owner.x = owner.x - step < 0 ? 0 : owner.x - step;
+				} else if (e.keyCode == '39') { // 'right'
+					owner.x = owner.x + step > 550 ? 550 : owner.x + step;
+				}
+			}, false);
+
+			//shoot
+			Shoot = EC.Graph.extend({
+				w: 10,
+				h: 2,
+				path: function(ctx) {
+					ctx.rect(this.x, this.y, this.w, this.h);
+				},
+				style: {'fillStyle': '#fff'}
+			});
+
+			function shoot() {
+				var _shoot = new Shoot({x: owner.x + 50, y: owner.y + 20}).render(ctx2, ['fill']);
+				shoots.push(_shoot);
+			}
+
+			initGame();
+
+		</script>
+	</body>
+</html>
