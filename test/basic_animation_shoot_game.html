@@ -8,7 +8,8 @@
 	<body>
 	
 		<div id="viewport" style="width:600px;height: 250px"></div>
-		<div style="position: absolute; left: -9999px;">
+		<p>tip: press 'space' to shoot enermy; press 'up','down','left','right' to move.</p>
+		<div style="position: absolute; left: -9999px;top: -9999px;">
 			<img src="../src/img/fish1.png" />
 			<img src="../src/img/fish2.png" />
 			<img src="../src/img/fish3.png" />
@@ -39,7 +40,8 @@
 				fishImg = document.createElement('img'),
 				rows = 4,
 				cols = 4,
-				bg, Fish, Shoot, owner, enermy = [], shoots = [], i, j, tempEnermy, step = 5, inited = false;
+				score = 0, step = 5, inited = false,
+				bg, Fish, Shoot, owner, enermy = [], shoots = [], i, j, tempEnermy, lv;
 
 			
 
@@ -71,10 +73,11 @@
 				}
 			});
 
-			function createFish(x, y, w, h, src, ctx) {
-				var img = document.createElement('img');
+			function createFish(x, y, w, h, src, ctx, lv) {
+				var img = document.createElement('img'),
+					life = typeof lv != 'undefined' ? lv + 1 : 0;
 				img.src = src;
-				return new Fish({x: x, y: y, w: w, h: h, img: img}).render(ctx);
+				return new Fish({x: x, y: y, w: w, h: h, img: img, life: life}).render(ctx);
 			}
 
 			
@@ -83,14 +86,21 @@
 			function initEnermy() {
 				for (i = 0; i < rows; i++) {
 					for (j = 0; j < cols; j++) {
-						tempEnermy = createFish(600 + i * 50, 20 + j * 50 + i * 10, 30, 30, imgs.enermy[0], ctx2);
+						tempEnermy = createFish(600 + i * 50, 20 + j * 50 + i * 10, 30, 30, imgs.enermy[lv], ctx2, lv);
 						enermy.push(tempEnermy);
 					}
 				}
+				lv = ++lv % 3;
 			}
 
 			function initGame() {
+				//fix jsfiddle iframe focus
+				setTimeout(function() {
+					window.focus();
+				}, 500)
 				inited = true;
+				score = 0;
+				lv = 0;
 				ctx3.clearRect(0, 0, 600, 250);
 				owner = createFish(50, 100, 50, 50, imgs.owner, ctx2);
 				initEnermy();
@@ -109,7 +119,11 @@
 					v.x += 1;
 					enermy.forEach(function(b) {
 						if (v.x >= b.x && v.x <= b.x + b.w && v.y >= b.y && v.y <= b.y + b.h) {
-							die(b);
+							die(v, 'shoot');
+							if (--b.life == 0) {
+								die(b, 'enermy');
+							}
+								
 						}
 					})
 				});
@@ -117,30 +131,53 @@
 				enermy.forEach(function(b) {
 					b.x--;  
 					if (b.x + b.w < 0) {
-						die(b);
+						die(b, 'enermy');
+						return;
 					}
-					if (owner.x >= b.x && owner.x <= b.x + b.w && owner.y >= b.y && owner.y <= b.y + b.h) {
-						die(owner);
+					var dx = owner.x - b.x,
+						dy = owner.y - b.y,
+						dr = b.w * b.w + b.h * b.h;
+					if (dx * dx + dy * dy < dr) {
+						die(owner, 'owner');
 					}
 				});
-
-
 			});
 
-			function die(o) {
-				var ind1 = enermy.indexOf(o),
-					ind2 = ctx2.graphs.indexOf(o);
-				if (ind1 > -1) {
-					enermy.splice(ind1, 1);
-					ctx2.graphs.splice(ind2, 1);
-				}
-				if (o == owner) {
+			layer3.update(function() {
+				var txt = 'SCORE: ' + score;
+				ctx3.font = '20px arial';
+				ctx3.fillText(txt, 50, 50);
+				
+			});
+
+			function die(o, type) {
+				if (type == 'owner') {
 					gameover();
 					return;
+				} else if (type == 'enermy') {
+					var ind1 = enermy.indexOf(o),
+					ind2 = ctx2.graphs.indexOf(o);
+					if (ind1 > -1) {
+						enermy.splice(ind1, 1);
+						
+					}
+					if (ind2 > -1) {
+						ctx2.graphs.splice(ind2, 1);
+					}
+					if (enermy.length == 0) {
+						initEnermy();
+					}
+				} else if (type == 'shoot') {
+					var sind1 = shoots.indexOf(o),
+						sind2 = ctx2.graphs.indexOf(o);
+					if (sind1 > -1)
+						shoots.splice(sind1, 1);
+					if (sind2 > -1)
+						ctx2.graphs.splice(sind2, 1);
+					score += 5 * lv;
 				}
-				if (enermy.length == 0) {
-					initEnermy();
-				}
+				
+				
 				ctx2.reRender();
 			}
 
@@ -149,7 +186,7 @@
 				enermy = [];
 				ctx2.graphs = [];
 				shoots = [];
-				ctx2.clearRect(0, 0, 600, 250);
+				ctx2.clearRect(0, 0, 600 , 250);
 				inited = false;
 
 				var	txt1 = 'GAME OVER',
@@ -170,15 +207,21 @@
 						shoot();
 					else
 						initGame();
+					e.preventDefault();
 				} else if (e.keyCode == '38') { // 'up'
 					owner.y = owner.y - step < 0 ? 0 : owner.y - step;
+					e.preventDefault();
 				} else if (e.keyCode == '40') { // 'down'
 					owner.y = owner.y + step > 200 ? 200 : owner.y + step;
+					e.preventDefault();
 				} else if (e.keyCode == '37') { // 'left'
 					owner.x = owner.x - step < 0 ? 0 : owner.x - step;
+					e.preventDefault();
 				} else if (e.keyCode == '39') { // 'right'
 					owner.x = owner.x + step > 550 ? 550 : owner.x + step;
+					e.preventDefault();
 				}
+				
 			}, false);
 
 			//shoot
