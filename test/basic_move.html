@@ -1,0 +1,63 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+	<head>
+		<meta charset="utf-8">
+		<title></title>
+		<link href="../src/default.css" rel="stylesheet" />
+	</head>
+	<body>
+	
+		<div id="viewport" style="width: 600px;height: 300px; background: #eee;"></div>
+	
+		<script type="text/javascript" src="../src/lib/underscore-min.js"></script>
+		<script type="text/javascript" src="../src/lib/backbone.js"></script>
+		<script type="text/javascript" src="../src/ec.global.js"></script>
+
+		<script type="text/javascript">
+			//create 2 layers, background draw a circle, foreground draw a rect
+
+			var layer1 = new EC.Layer(),
+				ctx1 = layer1.ctx,
+				Ball, ball1, ball2;
+
+			Ball = EC.Graph.extend({
+				'path': function(ctx) {
+					ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2, false);
+				}
+			});
+
+			ball1 = new Ball({x: 50, y: 50, r: 10}).render(ctx1, ['fill']);
+			ball2 = new Ball({x: 150, y: 250, r: 10}).render(ctx1, ['stroke']);
+			
+
+			//move can used with/without animate
+			EC.Layer.animate.start();
+
+			
+
+			var easingType = ['linear', 'swing', 'easeInQuad', 'easeOutQuad', 'easeInOutQuad', 'easeInCubic', 
+							'easeOutCubic', 'easeInOutCubic', 'easeInQuart', 'easeOutQuart', 'easeInOutQuart', 'easeInQuint', 
+							'easeOutQuint', 'easeInOutQuint', 'easeInSine', 'easeOutSine','easeInOutSine', 'easeInExpo', 
+							'easeOutExpo', 'easeInOutExpo', 'easeInCirc', 'easeOutCirc', 'easeInOutCirc', 'easeInElastic',
+							 'easeOutElastic', 'easeInOutElastic', 'easeInBack', 'easeOutBack', 'easeInOutBack', 
+							 'easeInBounce', 'easeOutBounce', 'easeInOutBounce'];
+			function randomMove(ball) {
+				var x = Math.round(Math.random() * layer1.canvas.width),
+					y = Math.round(Math.random() * layer1.canvas.height),
+					easing = Math.floor(Math.random() * easingType),
+					t = Math.round(Math.random() * 500) + 1000;
+
+				ball.move(x, y, t, easing, function(p) {
+					if (p == 1) {
+						randomMove(ball);
+					}
+				})
+			}
+			randomMove(ball1);
+			randomMove(ball2);
+
+			
+
+		</script>
+	</body>
+</html>

@@ -7,9 +7,19 @@
 */
 
 
-(function() {
+(function(Backbone) {
 
   var EC = {};
+
+
+  var _extend = function(_target, o) {
+    if (IsType.isObject(o)) {
+      for (var i in o) {
+        if (o.hasOwnProperty(i))
+          _target[i] = o[i];
+      }
+    }
+  }
 
   //DOM Event
   var DOMEvent = {
@@ -231,13 +241,11 @@
     Layer.aniLayers = [];
 
     function clearStage() {
-      if (Layer.aniLayers.length === 0) {return;}
       Layer.aniLayers.forEach(function(v) {
         v._aniClear();
       });
     }
     function updateStage() {
-      if (Layer.aniLayers.length === 0) {return;}
       Layer.aniLayers.forEach(function(v) {
         v._aniUpdate();
       });
@@ -250,7 +258,6 @@
       }
     }
     function renderStage() {
-      if (Layer.aniLayers.length === 0) {return;}
       Layer.aniLayers.forEach(function(v) {
         v._aniRender();
       });
@@ -403,7 +410,7 @@
       return c/2*((t-=2)*t*(((s*=(1.525))+1)*t + s) + 2) + b;
     },
     easeInBounce: function (x, t, b, c, d) {
-      return c - jQuery.easing.easeOutBounce (x, d-t, 0, c, d) + b;
+      return c - this.easeOutBounce (x, d-t, 0, c, d) + b;
     },
     easeOutBounce: function (x, t, b, c, d) {
       if ((t/=d) < (1/2.75)) {
@@ -417,19 +424,18 @@
       }
     },
     easeInOutBounce: function (x, t, b, c, d) {
-      if (t < d/2) return jQuery.easing.easeInBounce (x, t*2, 0, c, d) * .5 + b;
-      return jQuery.easing.easeOutBounce (x, t*2-d, 0, c, d) * .5 + c*.5 + b;
+      if (t < d/2) return this.easeInBounce (x, t*2, 0, c, d) * .5 + b;
+      return this.easeOutBounce (x, t*2-d, 0, c, d) * .5 + c*.5 + b;
     }
   }
 
   //Move
   var Move = Backbone.Model.extend({
-    initialize: function(during, type, callback) {
-      this.during = during;
-      this.easing = type;
-      type.callback = callback;
+    initialize: function(o) {
+      _extend(this, o);
+
       this._time0 = new Date().getTime();
-      if (!Easing[type]) {
+      if (!Easing[this.easing]) {
         this.easing = 'linear';
       }
 
@@ -440,20 +446,33 @@
         this._start();
       }
     },
+
     update: function(t) {
       this._time1 = t;
-      this.percent0 = (this._time1 - this.time0) / this.during;
-      if (this.percent0 > 1 && this._timer) {
-        clearInterval(this._timer);
-        delete this._timer;
+      this.percent0 = (this._time1 - this._time0) / this.during;
+
+      if (this.percent0 >= 1) {
+        this._stop();
+        this.callback(1);
+      } else {
+        this.percent1 = Easing[this.easing](this.percent0, this.during * this.percent0, 0, 1, this.during);
+        this.callback(this.percent1);
       }
-      this.percent1 = Easing[this.easing](this.percent0, this.during * this.percent0, 0, 1, this.during);
-      this.callback(this.percent1);
     },
+
+    _stop: function() {
+      if (this._timer) {
+        clearInterval(this._timer);
+       delete this._timer;
+      }
+      Layer.moves.splice(Layer.moves.indexOf(this), 1);
+    },
+
     _start: function() {
-      var This = this;
+      var This = this, t;
       this._timer = setInterval(function() {
-        This.update(new Date().getTime());
+        t = new Date().getTime();
+        This.update(t);
       }, 10);
     }
   })
@@ -596,12 +615,7 @@
   var Graph = Backbone.Model.extend({
 
     initialize: function(o) {
-      if (IsType.isObject(o)) {
-        for (var i in o) {
-          if (o.hasOwnProperty(i))
-            this[i] = o[i];
-        }
-      }
+      _extend(this, o);
 
       // 绘制一个识别层用于图形的event判断
       if (!Graph.detecter) {
@@ -747,6 +761,31 @@
         this.y += dy;
         this.ctx.reRender();
       });
+    },
+
+    move: function(ex, ey, during, easing, callback) {
+      var x0 = this.x,
+          y0 = this.y,
+          dx = ex - x0,
+          dy = ey - y0,
+          This = this;
+
+      this._curMove = new Move({
+        'during': during, 
+        'easing': easing, 
+        'callback': function(p) {
+          This.x = x0 + dx * p;
+          This.y = y0 + dy * p;
+          This.ctx.reRender();
+          callback(p);
+        }
+      });
+    },
+
+    stopMove: function() {
+      if (this._curMove) {
+        this._curMove._stop();
+      }
     }
 
   });
