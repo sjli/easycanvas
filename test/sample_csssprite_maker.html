@@ -1,0 +1,177 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+	<head>
+		<meta charset="utf-8">
+		<title></title>
+		<link href="../src/default.css" rel="stylesheet" />
+	</head>
+	<body>
+	
+		<div id="viewport" style="width: 600px;height: 300px; background: transparent; border: dashed 1px #ccc;"></div>
+		<input type="file" multiple id="uploader" /><br />
+		<label>间隔：<input type="number" value=10 placeholder="间距" id="spritePadding" /></label><br />
+		<label>前缀：<input type="text" value='icon_' placeholder="前缀" id="prefix" /></label><br />
+		<label>命名：<select id="naming"><option value=1>前缀+原图名</option><option value=2>前缀+序号</option></select></label><br />
+		<input type="button" value="完成" id="finish" style="display: none;" />
+		<input type="button" value="裁剪" id="clip" style="display: none;" />
+		<input type="button" value="重置" id="reset" style="display: none;" />
+		<pre id="codes"></pre>
+	
+		<script type="text/javascript" src="../src/lib/underscore-min.js"></script>
+		<script type="text/javascript" src="../src/lib/backbone.js"></script>
+		<script type="text/javascript" src="../src/ec.global.js"></script>
+
+		<script type="text/javascript">
+			function uploadHandler(id) {
+				var input = document.getElementById(id);
+
+				input.addEventListener('change', function(e) {
+					var files = this.files,
+						i = 0,
+						imgs = [];
+					
+					[].forEach.call(files, function(v) {
+						var img = document.createElement('img'),
+							reader = new FileReader(),
+							name = v.name.match(/.*(?=\.\w+$)/)[0];
+
+						img.onload = function() {
+							imgs.push({
+								img: this,
+								width: this.width,
+								height: this.height,
+								name: name
+							});
+							if (imgs.length == files.length) {
+								Sprite.render(imgs);
+							}
+						};
+
+						reader.onload = function(e) {
+							img.src = e.target.result;
+						};
+
+						reader.readAsDataURL(v);
+					});
+				});
+			}
+
+
+			var Sprite = {
+				init: function(imgs) {
+					this.layer = new EC.Layer();
+
+					this.Graph = EC.Graph.extend({
+						'path': function(ctx) {
+							ctx.rect(this.x, this.y, this.w, this.h);
+						},
+						'renderFn': function() {
+							this.ctx.drawImage(this.img, this.x, this.y, this.w, this.h);
+						},
+						'draggable': true,
+						'dragMode': 'normal'
+					});
+					this.curX = this.curY = this.maxY = 0;
+				},
+
+				render: function(imgs) {
+					var This = this,
+						padding = parseInt(document.getElementById('spritePadding').value) || 10;
+
+					imgs.forEach(function(v) {
+						This.curY = This.curX + v.width > EC.Layer.viewport.width ? This.maxY : This.curY;
+						This.curX = This.curX + v.width > EC.Layer.viewport.width ? 0 : This.curX;
+						
+						var graph = new This.Graph({
+							x: This.curX,
+							y: This.curY,
+							w: v.width,
+							h: v.height,
+							img: v.img,
+							name: v.name
+						}).render(This.layer.ctx);
+
+						This.curX += v.width + padding;
+						This.maxY = Math.max(This.maxY, This.curY + v.height + padding);
+					});
+
+					this.bindFinish();
+				},
+
+				bindFinish: function() {
+					if (!this.finishBtn) {
+						this.finishBtn = document.getElementById('finish');
+						this.finishBtn.style.display = 'block';
+
+						var This = this,
+							detector = document.getElementById('ec_detector'), 
+							codes = document.getElementById('codes'), 
+							prefix = document.getElementById('prefix'),
+							naming = document.getElementById('naming'),
+							clip = document.getElementById('clip'),
+							reset = document.getElementById('reset');
+
+						this.finishBtn.addEventListener('click', function() {
+							this.value = '更新';
+
+							if (detector) {
+								detector.style.display = 'none';
+							}
+
+							var pre = prefix.value,
+								ind = naming.selectedIndex,
+								txt = '',
+								bgtxt = '',
+								len = This.layer.ctx.graphs.length,
+								coma = len == 1 ? '' : ',';
+
+							This.layer.ctx.graphs.forEach(function(v, i) {
+								var x = v.x ? '-' + v.x + 'px' : '0',
+									y = v.y ? '-' + v.y + 'px' : '0',
+									last = ind == 0 ? v.name : i,
+									cls = '.' + pre + last;
+
+								txt += '\n' + cls + ' {\n';
+								txt += '  width: ' + v.w + 'px;\n';
+								txt += '  height: ' + v.h + 'px;\n';
+								txt += '  background-position: ' + x + ' ' + y + ';\n';
+								txt += '}\n';
+
+								if (i != len - 1) {
+									bgtxt += cls + coma + '\n';
+								} else {
+									bgtxt += cls + ' {\n';
+									bgtxt += '  background: url(yourspriteimageurl) -9999px -9999px no-repeat;\n';
+									bgtxt += '}\n';
+								}
+							});
+
+							if (codes) {
+								codes.innerHTML = bgtxt + txt;
+							}
+						});
+
+						clip.style.display = 'block';
+						clip.addEventListener('click', function() {
+							This.clip();
+						});
+					}
+				},
+
+				clip: function() {
+					this.layer.canvas.width = this.curX;
+					this.layer.canvas.height = this.maxY;
+					EC.Layer.viewport.elm.style.width = this.curX + 'px';
+					EC.Layer.viewport.elm.style.height = this.maxY + 'px';
+					this.layer.ctx.reRender();
+				}
+
+			};
+
+			Sprite.init();
+
+			uploadHandler('uploader');
+
+		</script>
+	</body>
+</html>

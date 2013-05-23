@@ -465,7 +465,9 @@
         clearInterval(this._timer);
        delete this._timer;
       }
-      Layer.moves.splice(Layer.moves.indexOf(this), 1);
+      var ind = Layer.moves.indexOf(this);
+      if (ind > -1)
+        Layer.moves.splice(ind, 1);
     },
 
     _start: function() {
@@ -558,7 +560,7 @@
   //Layer
   var Layer = Backbone.Model.extend({
 
-    initialize: function() {
+    initialize: function(customId) {
       // init viewport
       if (!Layer.viewport) {
         Layer.viewport = new Viewport;
@@ -570,6 +572,8 @@
         _animation();
       }
 
+      this.customId = customId || null;
+
       this.create();
     },
 
@@ -578,7 +582,7 @@
       Layer.viewport.elm.appendChild(this.canvas);
       this.canvas.width = Layer.viewport.width;
       this.canvas.height = Layer.viewport.height;
-      this.canvas.id = 'ec_' + this.cid;
+      this.canvas.id = this.customId ? 'ec_' + this.customId : 'ec_' + this.cid;
       this.ctx = this.canvas.getContext('2d');
       _enhanceCTX(this.ctx);
     },
@@ -619,7 +623,7 @@
 
       // 绘制一个识别层用于图形的event判断
       if (!Graph.detecter) {
-        Graph.detecter = new Layer;
+        Graph.detecter = new Layer('detector');
       }
       
 
@@ -646,6 +650,13 @@
       }
       return this;
     }, 
+
+    remove: function() {
+      var ind = this.ctx.graphs.indexOf(this);
+      if (ind > -1) {
+        this.ctx.graphs.splice(ind, 1);
+      }
+    },
 
     _createPath: function(ctx) {
       if (!this.path) {
