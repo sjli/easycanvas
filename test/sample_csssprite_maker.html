@@ -4,17 +4,35 @@
 		<meta charset="utf-8">
 		<title></title>
 		<link href="../src/default.css" rel="stylesheet" />
+		<style type="text/css">
+			#viewport {
+				width: 600px;
+				height: 300px; 
+				background: transparent; 
+				border: dashed 1px #ccc;
+			}
+			#finish, #down, #reset {
+				display: none;
+				outline: none;
+			}
+			#codes {
+				width: 600px;
+				height: 200px;
+				overflow: auto;
+				border: dashed 1px #ccc;
+			}
+		</style>
 	</head>
 	<body>
 	
-		<div id="viewport" style="width: 600px;height: 300px; background: transparent; border: dashed 1px #ccc;"></div>
+		<div id="viewport"></div>
 		<input type="file" multiple id="uploader" /><br />
 		<label>间隔：<input type="number" value=10 placeholder="间距" id="spritePadding" /></label><br />
 		<label>前缀：<input type="text" value='icon_' placeholder="前缀" id="prefix" /></label><br />
 		<label>命名：<select id="naming"><option value=1>前缀+原图名</option><option value=2>前缀+序号</option></select></label><br />
-		<input type="button" value="完成" id="finish" style="display: none;" />
-		<input type="button" value="裁剪" id="clip" style="display: none;" />
-		<input type="button" value="重置" id="reset" style="display: none;" />
+		<input type="button" value="完成" id="finish" />
+		<a id="down" href="#">下载图片</a>
+		<input type="button" value="重置" id="reset" />
 		<pre id="codes"></pre>
 	
 		<script type="text/javascript" src="../src/lib/underscore-min.js"></script>
@@ -149,12 +167,13 @@
 							if (codes) {
 								codes.innerHTML = bgtxt + txt;
 							}
-						});
 
-						clip.style.display = 'block';
-						clip.addEventListener('click', function() {
 							This.clip();
+							This.downBtn();
+							reset.style.display = 'block';
 						});
+						
+						reset.addEventListener('click', this.reset);
 					}
 				},
 
@@ -164,6 +183,21 @@
 					EC.Layer.viewport.elm.style.width = this.curX + 'px';
 					EC.Layer.viewport.elm.style.height = this.maxY + 'px';
 					this.layer.ctx.reRender();
+				},
+
+				downBtn: function() {
+					var data = this.layer.canvas.toDataURL('image/png'),
+						downmime = 'image/octet-stream',
+						btn = document.getElementById('down');
+
+					data = data.replace(/image\/\w+/, downmime);
+					btn.href = data;
+					btn.style.display = 'block';
+
+				},
+
+				reset: function() {
+					
 				}
 
 			};
