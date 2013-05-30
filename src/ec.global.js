@@ -308,7 +308,7 @@
       if (Layer.moves.length > 0) {
         var time1 = new Date().getTime();
         Layer.moves.forEach(function(v) {
-          v.update(time1);
+          v._update(time1);
         });
       }
     }
