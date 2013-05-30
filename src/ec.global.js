@@ -1,17 +1,31 @@
 
 /*
-* @description EasyCanvas is a tiny Framework for canvas drawing, game and animation building,
-*               which is require Underscore and BackBone for Model and Event
-* @author james.li0122@gmail.com
-* @latest update 2013.5         
-*/
+ * EasyCanvas - v1.0
+ * Copyright (c) 2011-12013
+ * http://www.ued-lab.com
+ * @description EasyCanvas is a tiny Framework for canvas drawing, game and animation building,
+ *               which is require Underscore and BackBone for Model and Event
+ * @author james.li0122@gmail.com     
+ */
 
 
 (function(Backbone) {
 
+
+  /**
+   * @framwork EC
+   * @public
+   * @property {class} Layer
+   * @property {class} Graph
+   * @description Main export object
+   */
   var EC = {};
 
 
+  /**
+   * @private
+   * @description extend object
+   */
   var _extend = function(_target, o) {
     if (IsType.isObject(o)) {
       for (var i in o) {
@@ -21,7 +35,14 @@
     }
   }
 
-  //DOM Event
+  /**
+   * DOM Event Helper
+   * @private
+   * @description dom event register from Dean Edwards
+   * @link http://dean.edwards.name/weblog/2005/10/add-event/
+   * @property {fn} add
+   * @property {fn} del 
+   */
   var DOMEvent = {
     _uid: 1,
 
@@ -83,7 +104,14 @@
 
 
 
-  // common detect
+  /**
+   * IsType: value type detector
+   * @private
+   * @property {fn} isObject
+   * @property {fn} isFunction
+   * @property {fn} isString
+   * @property {fn} isArray
+   */
   var IsType = {
     toString: Object.prototype.toString,
     isObject: function(o) {
@@ -104,7 +132,17 @@
 
 
 
-  //get/set currentTransform via methods, add rotate, flip methods
+  /**
+   * @extend CanvasRenderingContext2D object
+   * @private
+   * @property {array} currentTransform
+   * @property {fn} centerRotate: rotate context round centain point
+   * @property {fn} flipH
+   * @property {fn} flipV
+   * @property {array} graphs: graph instances in the context
+   * @property {fn} reRender: redraw all graphs in the context
+   * @property {fn} clear: clear context [and all graphs in the context]
+   */
 
   function _enhanceCTX(ctx) {
     var proto = ctx.constructor.prototype;
@@ -221,10 +259,27 @@
         graphs[i].render();
       }
     };
+
+    ctx.clear = function(clearGraph) {
+      if (clearGraph === true) {
+        this.graphs = [];
+      }
+      this.clearRect(0, 0, Layer.viewport.width, Layer.viewport.height);
+    };
   }
 
 
-
+  /**
+   * animation
+   * @private
+   * @exports {array} Layer.aniLayers: animation update layers
+   * @exports {object} Layer.animate: animate control object
+   *
+   * Layer.animate
+   * @property {fn} start
+   * @property {fn} stop
+   * @property {fn} restart
+   */
   //animation
   function _animation() {
     var request = (function(callback) {
@@ -292,10 +347,13 @@
     };
   }
 
-  //animation Easing 
-  // from jquery animation & jquery.easing plugin
-  // https://github.com/danro/jquery-easing/blob/master/jquery.easing.js
-  // @params (x, t, b, c, d)  refer to (percent, duration*percent, 0, 1, duration)
+  /**
+   * @private
+   * animation Easing functions
+   * from jquery animation & jquery.easing plugin
+   * @link https://github.com/danro/jquery-easing/blob/master/jquery.easing.js
+   * @params (x, t, b, c, d)  refer to (percent, duration*percent, 0, 1, duration)
+   */
   var Easing = {
     linear: function(x) {
       return x;
@@ -429,7 +487,13 @@
     }
   }
 
-  //Move
+  /**
+   * @class Move
+   * @private
+   * @attribute o {object}: during, easing, callback
+   * callback @return {number} percent from 0 to 1 
+   *
+   */
   var Move = Backbone.Model.extend({
     initialize: function(o) {
       _extend(this, o);
@@ -447,7 +511,7 @@
       }
     },
 
-    update: function(t) {
+    _update: function(t) {
       this._time1 = t;
       this.percent0 = (this._time1 - this._time0) / this.during;
 
@@ -474,14 +538,26 @@
       var This = this, t;
       this._timer = setInterval(function() {
         t = new Date().getTime();
-        This.update(t);
+        This._update(t);
       }, 10);
     }
   })
 
 
 
-  //Viewport
+  /**
+   * @class Viewport
+   * @private
+   * @export {object} Layer.viewport
+   *
+   * Layer.viewport
+   * @descrpition a viewport is a drawing area, with multi layers(canvas)
+   * @property {dom} elm: the viewport element, parentNode of canvases
+   * @property {number} width
+   * @property {number} height
+   * @property {number} x: current x coordinate from left 0 to right width, when mouse on viewport
+   * @property {number} y: current y coordinate from top 0 to bottom height, when mouse on viewport
+   */
 
   var Viewport = Backbone.Model.extend({
     width: 200,
@@ -557,7 +633,20 @@
 
 
 
-  //Layer
+  /**
+   * @class Layer
+   * @public as EC.Layer
+   * @classProperty {object} viewport: instance of Viewport
+   * @classProperty {array} moves: list of instance of Move
+   * @classProperty {object} animate: animation controler with start, stop, restart methods
+   * 
+   * @instance 
+   * @description each layer as the specific drawing layer based on specific canvas
+   * @property {string} customId: used to set the layer canvas id
+   * @property {dom} canvas
+   * @property {object} ctx
+   * @property {fn} update: the specific update function for updating status of canvas animation
+   */
   var Layer = Backbone.Model.extend({
 
     initialize: function(customId) {
@@ -574,10 +663,10 @@
 
       this.customId = customId || null;
 
-      this.create();
+      this._create();
     },
 
-    create: function() {
+    _create: function() {
       this.canvas = document.createElement('canvas');
       Layer.viewport.elm.appendChild(this.canvas);
       this.canvas.width = Layer.viewport.width;
@@ -615,15 +704,26 @@
 
 
 
-  //Graph
+  /**
+   * @class Graph
+   * @public as EC.Graph
+   * @classProperty {object} detector: layer instance for graph events detect
+   *
+   * @instance
+   * @property {fn} render: render graph on certain ctx
+   * @property {fn} remove: remove the graph from graph list of its ctx
+   * @property {fn} on: mouse event listener for graph
+   * @property {fn} move: graph move handler, with/without Layer.animate
+   * @property {fn} stopMove
+   */
   var Graph = Backbone.Model.extend({
 
     initialize: function(o) {
       _extend(this, o);
 
       // 绘制一个识别层用于图形的event判断
-      if (!Graph.detecter) {
-        Graph.detecter = new Layer('detector');
+      if (!Graph.detector) {
+        Graph.detector = new Layer('detector');
       }
       
 
@@ -691,7 +791,7 @@
 
     events: function() {
       var viewport = Layer.viewport,
-          ctx = Graph.detecter.ctx,
+          ctx = Graph.detector.ctx,
           This = this;
 
       this._normalBind(viewport, ctx, This);

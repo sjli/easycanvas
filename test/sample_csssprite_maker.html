@@ -90,6 +90,8 @@
 						'dragMode': 'normal'
 					});
 					this.curX = this.curY = this.maxY = 0;
+					this.ox = EC.Layer.viewport.width;
+					this.oy = EC.Layer.viewport.height;
 				},
 
 				render: function(imgs) {
@@ -122,7 +124,7 @@
 						this.finishBtn.style.display = 'block';
 
 						var This = this,
-							detector = document.getElementById('ec_detector'), 
+							detector = EC.Graph.detector.canvas, 
 							codes = document.getElementById('codes'), 
 							prefix = document.getElementById('prefix'),
 							naming = document.getElementById('naming'),
@@ -173,7 +175,9 @@
 							reset.style.display = 'block';
 						});
 						
-						reset.addEventListener('click', this.reset);
+						reset.addEventListener('click', function() {
+							This.reset();
+						});
 					}
 				},
 
@@ -183,6 +187,13 @@
 					EC.Layer.viewport.elm.style.width = this.curX + 'px';
 					EC.Layer.viewport.elm.style.height = this.maxY + 'px';
 					this.layer.ctx.reRender();
+				},
+
+				resetSize: function() {
+					this.layer.canvas.width = this.ox;
+					this.layer.canvas.height = this.oy;
+					EC.Layer.viewport.elm.style.width = this.ox + 'px';
+					EC.Layer.viewport.elm.style.height = this.oy + 'px';
 				},
 
 				downBtn: function() {
@@ -197,7 +208,14 @@
 				},
 
 				reset: function() {
-					
+					document.getElementById('codes').innerHTML = '';
+					document.getElementById('down').style.display = 'none';
+					this.finishBtn.value = '完成';
+					this.resetSize();
+					this.curX = this.curY = this.maxY = 0;
+					this.layer.ctx.graphs = [];
+					this.layer.ctx.clearRect(0, 0, EC.Layer.viewport.width, EC.Layer.viewport.height);
+
 				}
 
 			};
