@@ -1,0 +1,220 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+	<head>
+		<meta charset="utf-8">
+		<title></title>
+		<link href="../src/default.css" rel="stylesheet" />
+		<style type="text/css">
+			#viewport {
+				width: 600px;
+				height: 300px; 
+				background: transparent; 
+				border: dashed 1px #ccc;
+			}
+			#finish, #down, #reset {
+				display: none;
+				outline: none;
+			}
+			#codes {
+				width: 600px;
+				height: 200px;
+				overflow: auto;
+				border: dashed 1px #ccc;
+			}
+		</style>
+	</head>
+	<body>
+	
+		<div id="viewport"></div>
+		<input type="file" id="uploader" /><br />
+		<label>前缀：<input type="text" value='icon_' placeholder="前缀" id="prefix" /></label><br />
+		<label>命名：<select id="naming"><option value=1>前缀+原图名_序号</option><option value=2>前缀+序号</option></select></label><br />
+		<input type="button" value="完成" id="finish" />
+		<a id="down" href="#">下载图片</a>
+		<input type="button" value="重置" id="reset" />
+		<pre id="codes"></pre>
+	
+		<script type="text/javascript" src="../src/lib/underscore-min.js"></script>
+		<script type="text/javascript" src="../src/lib/backbone.js"></script>
+		<script type="text/javascript" src="../src/ec.global.js"></script>
+
+		<script type="text/javascript">
+			function uploadHandler(id) {
+				var input = document.getElementById(id);
+
+				input.addEventListener('change', function(e) {
+					var files = this.files,
+						i = 0,
+						img = document.createElement('img'),
+						reader = new FileReader(),
+						name = files[0].name.match(/.*(?=\.\w+$)/)[0],
+						data;
+
+						if (files.length == 0) {return;}
+
+						img.onload = function() {
+							data = {
+								img: this,
+								width: this.width,
+								height: this.height,
+								name: name
+							};
+							DetectSprite.init(data);
+						};
+
+						reader.onload = function(e) {
+							img.src = e.target.result;
+						};
+
+						reader.readAsDataURL(files[0]);
+				});
+			}
+
+
+			var DetectSprite = {
+				init: function(data) {
+					this.data = data;
+					if (!this.layer)
+						this.layer = new EC.Layer();
+
+					this.reset();
+					this.initDetect();
+					
+				},
+
+				initDetect: function() {
+					this.layer.canvas.width = this.data.width;
+					this.layer.canvas.height = this.data.height;
+					EC.Layer.viewport.elm.style.width = this.data.width + 'px';
+					EC.Layer.viewport.elm.style.height = this.data.height + 'px';
+					this.layer.ctx.drawImage(this.data.img, 0, 0, this.data.width, this.data.height);
+
+					this.detect();
+				},
+
+				detect: function() {
+					var c = this.layer.canvas,
+						t = this.layer.ctx,
+						data = t.getImageData(0, 0, c.width, c.height);
+
+					var worker = new Worker("detectGraphs.js"), This = this;
+
+					this.coords = [];
+
+					worker.onmessage = function(e) {
+						if (e.data == 'over') {
+							t.clearRect(0, 0, c.width, c.height);
+							t.drawImage(This.data.img, 0, 0, c.width, c.height);
+							This.bindFinish();
+							return;
+						}
+						var coord = e.data, isInner = false;
+
+						for (var i = 0; i < This.coords.length; i++) {
+							if (coord.minX >= This.coords[i].minX && coord.minY >= This.coords[i].minY
+								&& coord.maxX <= This.coords[i].maxX && coord.maxY <= This.coords[i].maxY) {
+								isInner = true;
+								break;
+							}
+						}
+
+						if (!isInner) {
+							This.coords.push({
+								x: coord.minX,
+								y: coord.minY,
+								w: coord.maxX - coord.minX,
+								h: coord.maxY - coord.minY
+							});
+							t.strokeStyle = '#fcc';
+							t.strokeRect(coord.minX, coord.minY, coord.maxX - coord.minX, coord.maxY - coord.minY);
+						}	
+					};
+
+					worker.postMessage(data);
+				},
+
+			
+				bindFinish: function() {
+					if (!this.finishBtn) {
+						this.finishBtn = document.getElementById('finish');
+						this.finishBtn.style.display = 'block';
+
+						var This = this,
+							codes = document.getElementById('codes'), 
+							prefix = document.getElementById('prefix'),
+							naming = document.getElementById('naming'),
+							reset = document.getElementById('reset');
+
+						this.finishBtn.addEventListener('click', function() {
+							this.value = '更新';
+
+							var pre = prefix.value,
+								ind = naming.selectedIndex,
+								txt = '',
+								bgtxt = '',
+								len = This.coords.length,
+								coma = len == 1 ? '' : ', ';
+
+							This.coords.forEach(function(v, i) {
+								var x = v.x ? '-' + v.x + 'px' : '0',
+									y = v.y ? '-' + v.y + 'px' : '0',
+									last = ind == 0 ? This.data.name + '_' + i : i,
+									cls = '.' + pre + last;
+
+								txt += '\n' + cls + ' {\n';
+								txt += '  width: ' + v.w + 'px;\n';
+								txt += '  height: ' + v.h + 'px;\n';
+								txt += '  background-position: ' + x + ' ' + y + ';\n';
+								txt += '}\n';
+
+								if (i != len - 1) {
+									bgtxt += cls + coma;
+								} else {
+									bgtxt += cls + ' {\n';
+									bgtxt += '  background: url(yourspriteimageurl) -9999px -9999px no-repeat;\n';
+									bgtxt += '}\n';
+								}
+							});
+
+							if (codes) {
+								codes.innerHTML = bgtxt + txt;
+							}
+
+							This.downBtn();
+							reset.style.display = 'block';
+						});
+						
+						reset.addEventListener('click', function() {
+							This.reset();
+						});
+					}
+				},
+
+				
+				downBtn: function() {
+					var data = this.layer.canvas.toDataURL('image/png'),
+						downmime = 'image/octet-stream',
+						btn = document.getElementById('down');
+
+					//data = data.replace(/image\/\w+/, downmime);
+					btn.href = data;
+					btn.style.display = 'block';
+
+				},
+
+				reset: function() {
+					document.getElementById('codes').innerHTML = '';
+					document.getElementById('down').style.display = 'none';
+					this.layer.ctx.clearRect(0, 0, this.data.width, this.data.height);
+					if (this.finishBtn)
+						this.finishBtn.value = '完成';
+				}
+
+			};
+
+			
+			uploadHandler('uploader');
+
+		</script>
+	</body>
+</html>
