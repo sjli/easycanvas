@@ -196,10 +196,10 @@
 						downmime = 'image/octet-stream',
 						btn = document.getElementById('down');
 
-					//data = data.replace(/image\/\w+/, downmime);
+					data = data.replace(/image\/\w+/, downmime);
 					btn.href = data;
 					btn.style.display = 'block';
-
+					btn.download = this.data.name + '.png';
 				},
 
 				reset: function() {
