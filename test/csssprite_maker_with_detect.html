@@ -105,6 +105,7 @@
 						if (e.data == 'over') {
 							t.clearRect(0, 0, c.width, c.height);
 							t.drawImage(This.data.img, 0, 0, c.width, c.height);
+							This.renderGraphs();
 							This.bindFinish();
 							return;
 						}
@@ -133,6 +134,38 @@
 					worker.postMessage(data);
 				},
 
+				renderGraphs: function() {
+					var Graph = EC.Graph.extend({
+						initData: function(ctx) {
+							this.imgdata = ctx.getImageData(this.x, this.y, this.w, this.h);
+						},
+						path: function(ctx) {
+							ctx.rect(this.x, this.y, this.w, this.h);
+						},
+						renderFn: function() {
+							this.ctx.putImageData(this.imgdata, this.x, this.y, 0, 0, this.w, this.h);
+						},
+						draggable: true,
+						dragMode: 'normal'
+					});
+
+					var t = this.layer.ctx, This = this;
+
+					this.graphs = [];
+
+					this.coords.forEach(function(v) {
+						var graph = new Graph({
+							x: v.x,
+							y: v.y,
+							w: v.w,
+							h: v.h
+						});
+						graph.initData(t);
+						graph.render(t);
+						This.graphs.push(graph);
+					});
+				},
+
 			
 				bindFinish: function() {
 					if (!this.finishBtn) {
@@ -155,7 +188,7 @@
 								len = This.coords.length,
 								coma = len == 1 ? '' : ', ';
 
-							This.coords.forEach(function(v, i) {
+							This.graphs.forEach(function(v, i) {
 								var x = v.x ? '-' + v.x + 'px' : '0',
 									y = v.y ? '-' + v.y + 'px' : '0',
 									last = ind == 0 ? This.data.name + '_' + i : i,
