@@ -123,8 +123,8 @@
 							This.coords.push({
 								x: coord.minX,
 								y: coord.minY,
-								w: coord.maxX - coord.minX,
-								h: coord.maxY - coord.minY
+								w: coord.maxX - coord.minX + 1,
+								h: coord.maxY - coord.minY + 1
 							});
 							t.strokeStyle = '#fcc';
 							t.strokeRect(coord.minX, coord.minY, coord.maxX - coord.minX, coord.maxY - coord.minY);
@@ -163,6 +163,7 @@
 						graph.initData(t);
 						graph.render(t);
 						This.graphs.push(graph);
+						console.log(This.graphs.length)
 					});
 				},
 

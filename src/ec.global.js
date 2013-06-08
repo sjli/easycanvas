@@ -601,6 +601,8 @@
         This.clientY = This.oy - document.documentElement.scrollTop;
       }
 
+      this._fixScroll = _fixScroll;
+
       function _setPos(e) {
         if (This.x) {
           This.x0 = This.x;
@@ -664,6 +666,8 @@
       this.customId = customId || null;
 
       this._create();
+
+      Layer.viewport._fixScroll();
     },
 
     _create: function() {
