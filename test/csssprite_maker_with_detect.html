@@ -112,8 +112,9 @@
 						var coord = e.data, isInner = false;
 
 						for (var i = 0; i < This.coords.length; i++) {
-							if (coord.minX >= This.coords[i].minX && coord.minY >= This.coords[i].minY
-								&& coord.maxX <= This.coords[i].maxX && coord.maxY <= This.coords[i].maxY) {
+							if (coord.minX >= This.coords[i].x && coord.minY >= This.coords[i].y
+								&& coord.maxX <= This.coords[i].x + This.coords[i].w 
+								&& coord.maxY <= This.coords[i].y + This.coords[i].h) {
 								isInner = true;
 								break;
 							}
